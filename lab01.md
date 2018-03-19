@@ -1,6 +1,7 @@
 ## Lab-01. Installing and Running ns-3  
 
 In this lab, you will install ns-3 on your Linux machine, and run your first simulation.  
+Note that the labs are based on ns-3.27.
 
 ### Install ns-3 on your machine
 
