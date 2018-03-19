@@ -46,4 +46,9 @@ Testing 1 packets sent with receiver rss -80
 Received one packet!
 ```
 
+In the [next lab](lab02.md), we will take a look at our first simulation script.
+
+
+
+
 
