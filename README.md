@@ -1,3 +1,3 @@
-# Advanced Communications Lab: ns-3
+## Advanced Communications Lab: ns-3
 
-[1. Installing ns-3](lab01.md)
+[Lab-01. Installing and Running ns-3](lab01.md)
