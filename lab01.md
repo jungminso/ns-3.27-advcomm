@@ -26,3 +26,24 @@ cd ns-allinone-3.27
 If the build fails, you may need to [check](https://www.nsnam.org/wiki/Installation#Prerequisites) 
 whether all required libraries are installed.  
 
+(4) Try running an example code.
+
+```
+cd ns-3.27
+cp examples/wireless/wifi-simple-adhoc.cc scratch
+```
+
+The simulation script should go into `scratch` directory.
+
+```
+./waf --run scratch/wifi-simple-adhoc
+```
+
+If you see the following message, the simulation is complete and the installation is successful.
+
+```
+Testing 1 packets sent with receiver rss -80
+Received one packet!
+```
+
+
