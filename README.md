@@ -1,2 +1,3 @@
-# ns-3.27-advcomm
-Repository for teaching ns-3 in Advanced Communications course.
+# Advanced Communications Lab: ns-3
+
+[1. Installing ns-3](Lab01.md)
