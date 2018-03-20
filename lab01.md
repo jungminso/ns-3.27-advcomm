@@ -1,53 +1,53 @@
-## Lab-01. Installing and Running ns-3  
+## Lab-01. ns-3 설치와 실행
 
-In this lab, you will install ns-3 on your Linux machine, and run your first simulation.  
-Note that the labs are based on ns-3.27.
+이 실습에서는, 리눅스 머신에 ns-3를 설치하고, 시뮬레이션을 실행해본다.  
+참고로 이 실습과 이후의 실습들은 ns-3.27 버전을 기반으로 작성하였다.
 
-### Install ns-3 on your machine
+### ns-3 설치
 
-(1) Download ns-3 from the web.
+(1) ns-3를 웹으로부터 다운로드받는다.
 
 ```
 wget http://nsnam.org/release/ns-allinone-3.27.tar.bz2
 ```
 
-(2) Extract ns-3 code from the zip file.
+(2) 압축을 푼다.
 
 ```
 tar xjf ns-allinone-3.27.tar.bz2
 ```
 
-(3) Build the code.
+(3) 코드를 빌드한다.
 
 ```
 cd ns-allinone-3.27
 ./build.py
 ```
 
-If the build fails, you may need to [check](https://www.nsnam.org/wiki/Installation#Prerequisites) 
-whether all required libraries are installed.  
+만약 빌드가 실패하면, 필요한 라이브러리가 없어서일 가능성이 크다. 이런 경우에 필요한 라이브러리가 다 설치되었는지
+[이 사이트](https://www.nsnam.org/wiki/Installation#Prerequisites)를 참고하여 확인하고 필요하면 설치해준다.
 
-(4) Try running an example code.
+(4) 예제코드를 실행해본다.
 
 ```
 cd ns-3.27
 cp examples/wireless/wifi-simple-adhoc.cc scratch
 ```
 
-The simulation script should go into `scratch` directory.
+시뮬레이션 스크립트는 ```scratch``` 디렉토리에 들어가야 한다.
 
 ```
 ./waf --run scratch/wifi-simple-adhoc
 ```
 
-If you see the following message, the simulation is complete and the installation is successful.
+만약 실행 후 아래와 같은 메시지가 출력된다면, ns-3 설치에 성공한 것이다.
 
 ```
 Testing 1 packets sent with receiver rss -80
 Received one packet!
 ```
 
-In the [next lab](lab02.md), we will take a look at our first simulation script.
+[다음 실습](lab02.md)에서는, 무선랜 시뮬레이션 스크립트를 이해하도록 한다.
 
 
 
