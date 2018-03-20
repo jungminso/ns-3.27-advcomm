@@ -71,7 +71,7 @@ int main(int argc, char *argv[]) {
     // client socket
     UdpClientHelper myClient(ip.GetAddress(0), 9);
     myClient.SetAttribute("MaxPackets", UintegerValue(4294967295u));
-    myClient.SetAttribute("Interval", TimeValue(Seconds(0.00001)));
+    myClient.SetAttribute("Interval", TimeValue(Seconds(0.0001)));
     myClient.SetAttribute("PacketSize", UintegerValue(1472));
     // client application
     ApplicationContainer clientApp = myClient.Install(wifiNodes.Get(1));
