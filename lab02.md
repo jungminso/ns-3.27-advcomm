@@ -159,7 +159,7 @@ UDP 서버를 구성하고 60-61초 사이에 동작하도록 설정하였다. `
 ```cpp
 UdpClientHelper myClient(ip.GetAddress(0), 9);
 myClient.SetAttribute("MaxPackets", UintegerValue(4294967295u));
-myClient.SetAttribute("Interval", TimeValue(Seconds(0.00001)));
+myClient.SetAttribute("Interval", TimeValue(Seconds(0.0001)));
 myClient.SetAttribute("PacketSize", UintegerValue(1472));
 ApplicationContainer clientApp = myClient.Install(wifiNodes.Get(1));
 clientApp.Start(Seconds(60.0));
@@ -197,8 +197,6 @@ return 0;
 
 계산한 전송량을 화면에 출력하고 main 함수를 마친다.
 
----
-
 이 스크립트를 아래와 같이 실행한다.
 
 ```
@@ -212,5 +210,57 @@ throughput: 29.3576Mbps
 ```
 
 ---
+
+### Task 1. 변수화와 인자 정의
+
+이제부터 이 시뮬레이션 스크립트를 조금씩 변경하면서 ns-3 코드의 이해도를 높인다. 가장 먼저, 숫자로 표현된
+파라미터값들을 쉽게 변경할 수 있도록 변수화하고, 이를 스크립트 실행 시 인자로 줄 수 있도록 변경한다.
+
+먼저 아래와 같이 변수를 선언한다.
+
+```cpp
+uint16_t num_nodes  = 2;
+double   tx_power   = 20.0;
+double   ed_thresh  = -96.0;
+double   cs_thresh  = -99.0;
+double   interval   = 0.0001;
+uint32_t packetSize = 1472;
+double   distance   = 20.0;
+double   begin_time = 60.0;
+double   sim_time   = 1.0;
+```
+
+변수들의 의미는 직관적으로 알 수 있을 것이다. 트래픽의 시작 시간인 ```begin_time```과 함께 ```end_time```을 
+변수화하는 대신 트래픽 전송 기간인 ```sim_time```을 정의하였다. 또한, ```distance```는 1번 노드의 위치인
+```20.0``` 대신 사용하여 두 노드 간의 거리를 나타내는 변수로 사용한다.
+
+이렇게 변수들을 선언한 후, **코드에서 숫자를 변수로 바꿔야 하는 부분을 전부 바꿔준다**.
+
+다음으로는 사용자가 스크립트를 실행할 때 파라미터를 인자로 줄 수 있도록 한다. 이를 위하여 다음과 같이
+사용자 인자를 정의해주면 된다.
+
+```cpp
+CommandLine cmd;
+cmd.AddValue("distance", "distance between nodes", distance);
+cmd.Parse(argc, argv);
+```
+
+위의 변수들을 모두 인자화 할 수 있지만, 여기서는 ```distance``` 하나만 하였다. ```AddValue```의
+인자는 세 개인데, 첫 번째는 사용자가 기입하는 인자의 이름, 두 번째는 인자에 대한 설명, 세 번째는 연동되는
+변수 이름이 된다.
+
+이제 이 스크립트를 실행시켜본다. 수정한 스크립트의 이름은 script01-01.cc로 가정한다.  
+인자를 주면서 실행하는 방법은 아래와 같다.
+
+```
+./waf --run "scratch/script01-01 --distance=20"
+```
+
+이렇게 실행하면 이전과 같이 29.3576Mbps의 전송량이 나온다. 하지만 distance를 40으로 바꾸면, 결과가 0Mbps로
+나오는데, 이는 두 노드 사이의 거리가 너무 멀어서 서로의 패킷을 복원할 수 없기 때문이다. 
+
+
+
+
 
 
