@@ -93,6 +93,130 @@ mac.SetType("ns3::AdhocWifiMac");
 MAC 모델을 생성하고 ad-hoc 모드로 설정해준다. Ad-hoc 모드의 경우 AP없이 모바일 노드끼리 직접 통신하는 형태를
 말하며, 이 외에도 AP 모드(```APWifiMac```)와 station 모드(```StaWifiMac```) 가 있다.
 
+```cpp
+WifiHelper wifi;
+wifi.SetStandard(WIFI_PHY_STANDARD_80211a);
+std::string dataMode("OfdmRate54Mbps");
+wifi.SetRemoteStationManager("ns3::ConstantRateWifiManager", "DataMode", StringValue(dataMode));
+```
+
+PHY와 MAC이 802.11a/b/g/n/ac 중 어떤 표준을 사용하고, 어떤 MCS 레벨로 통신을 할지 결정한다. 여기서는
+802.11a를 사용하고, 54Mbps의 속도를 갖는 MCS 레벨을 사용하는 것으로 선언되었다. 데이터와 컨트롤 (RTS/CTS/ACK)
+메시지에 대해 서로 다른 MCS레벨을 사용하기 위해서는, ```SetRemoteStationManager```에 ```ControlMode```
+에 대한 값을 따로 선언해주면 된다.
+
+```cpp
+NetDeviceContainer devices = wifi.Install(phy, mac, wifiNodes);
+```
+
+지금까지 구성한 PHY와 MAC을 갖는 네트워크 디바이스를 생성한다. 
+
+```cpp
+MobilityHelper mobility;
+Ptr<ListPositionAllocator> positionAlloc = CreateObject<ListPositionAllocator>();
+positionAlloc->Add(Vector(0.0, 0.0, 0.0));
+positionAlloc->Add(Vector(20.0, 0.0, 0.0));
+mobility.SetPositionAllocator(positionAlloc);
+mobility.SetMobilityModel("ns3::ConstantPositionMobilityModel");
+mobility.Install(wifiNodes);
+```
+
+ns-3에서 mobility module은 노드의 위치와 움직임을 관장한다. 따라서 노드가 움직이지 않는 환경에서도 노드의
+위치 설정을 위해 이 모듈을 사용해야 한다. 노드의 위치를 지정하기 위한 allocator는 여러 개의 클래스가 있는데,
+이중에 ```ListPositionAllocator```는 노드의 위치를 직접 하나씩 지정해 줄 때 사용하는 것이다. 이 외에도
+```GridPositionAllocator```나 ```RandomBoxPositionAllocator```등 여러 형태의 클래스가 
+존재한다.
+
+```ListPositionAllocator```를 사용하면, 노드의 위치를 ```Vector(20.0, 0.0, 0.0)```과 같이
+지정해 주어야 한다. 여기에 들어가는 세 개의 숫자는 3-D 공간상의 X, Y, Z 좌표이고, 단위는 미터이다.
+
+이 실험에서 노드는 움직이지 않으므로 mobility model은 ```ConstantPositionMobilityModel```로
+설정해주었다.
+
+```cpp
+InternetStackHelper internet;
+internet.Install(wifiNodes);
+Ipv4AddressHelper ipv4;
+ipv4.SetBase("192.168.1.0", "255.255.255.0");
+Ipv4InterfaceContainer ip = ipv4.Assign(devices);
+```
+
+노드의 IP address를 설정해준다. 여러 개의 노드가 있을 경우 각각 설정해 줄 필요없이 이와 같이 하면 
+IP 주소가 자동으로 할당이 된다.
+
+```cpp
+UdpServerHelper myServer(9);
+ApplicationContainer serverApp = myServer.Install(wifiNodes.Get(0));
+serverApp.Start(Seconds(60.0));
+serverApp.Stop(Seconds(61.0));
+```
+
+노드의 transport layer를 설정하고 그 위에 전송할 트래픽을 구성하는 부분이다. 여기서는 0번 노드에
+UDP 서버를 구성하고 60-61초 사이에 동작하도록 설정하였다. ```myServer(9)```의 9는 포트번호로
+원하는대로 설정해 주면 된다.
+
+```cpp
+UdpClientHelper myClient(ip.GetAddress(0), 9);
+myClient.SetAttribute("MaxPackets", UintegerValue(4294967295u));
+myClient.SetAttribute("Interval", TimeValue(Seconds(0.00001)));
+myClient.SetAttribute("PacketSize", UintegerValue(1472));
+ApplicationContainer clientApp = myClient.Install(wifiNodes.Get(1));
+clientApp.Start(Seconds(60.0));
+clientApp.Stop(Seconds(61.0));
+```
+
+여기서는 1번 노드에 UDP 클라이언트를 설정하고 60-61초 사이에 동작하도록 한다. 먼저 첫번째 줄에
+```myClient(ip.GetAddress(0), 9)```의 인자는 연결할 서버의 IP 주소와 포트번호이다.
+그 다음 세 줄은 트래픽의 형태를 설정하는 것인데, ```MaxPackets```는 전송할 최대 패킷 수,
+```Interval```은 패킷 전송 간격, ```PacketSize```는 한 패킷의 크기를 의미한다.
+여기서의 크기는 UDP 헤더와 IP 헤더는 제외한 값이고 단위는 byte이다. ```Interval```의 
+단위는 초이다.
+
+```cpp
+Simulator::Stop(Seconds(61.1));
+Simulator::Run();
+Simulator::Destroy();
+```
+
+이제 구성이 다 되었으니 시뮬레이션을 실행시킨다. 먼저 시뮬레이션이 종료하는 시간을 정해주고(```Stop```),
+시뮬레이션을 실행한 다음(```Run```), 시뮬레이터를 제거한다(```Destroy```).
+
+```cpp
+uint32_t totalPacketsReceived = DynamicCast<UdpServer>(serverApp.Get(0))->GetReceived();
+double throughput = totalPacketsReceived * 1472 * 8 / (1.0 * 1000000.0);
+```
+
+시뮬레이션의 목적은 성능을 측정하는 것이다. 여기서는 초당 전송량(throughput)을 측정하는데, 이를 위하여
+UDP server가 받은 전체 패킷의 수를 읽어오고, 이와 전송 시간을 고려하여 초당 전송량을 계산한다.
+
+```cpp
+NS_LOG_UNCOND("throughput: " << throughput << "Mbps");
+return 0;
+```
+
+계산한 전송량을 화면에 출력하고 main 함수를 마친다.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
