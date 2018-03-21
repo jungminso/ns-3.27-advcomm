@@ -317,7 +317,7 @@ gnuplot tput_dist.dat
 
 이와 같이 실행시키면 결과로 graph_tput_dist.eps가 생성된다. eps파일은 [ghostview](http://pages.cs.wisc.edu/~ghost/)등을 이용하여 볼 수 있다.
 
-<center><img src="./graph_tput_dist.eps" width="400" height="300"></center>
+<center><img src="./graph_tput_dist.png" width="400" height="300"></center>
 
 ---
 
