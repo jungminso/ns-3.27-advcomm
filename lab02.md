@@ -292,7 +292,7 @@ int main(int argc, char *argv[]) {
 
 **기존의 main 함수는 RunSimulation이라는 이름으로 바꿔주고, 인자로 distance를 받도록 한다.**
 
-이제 스크립트를 실행시키면, 결과로 tput_dist.dat이라는 파일이 나온다. 이 파일의 각 라인에는 노드 사이의 거리와 그에 따른 전송량이 기록되어있다.
+이제 스크립트(script01-02.cc)를 실행시키면, 결과로 tput_dist.dat이라는 파일이 나온다. 이 파일의 각 라인에는 노드 사이의 거리와 그에 따른 전송량이 기록되어있다.
 [Gnuplot](http://www.gnuplot.info)을 이용하여 이 데이터를 그래프로 만들수가 있다. 먼저 Gnuplot용 스크립트를 아래와 같이 작성한다.
 파일이름은 draw.scr로 가정한다.
 
@@ -317,39 +317,54 @@ gnuplot tput_dist.dat
 
 이와 같이 실행시키면 결과로 graph_tput_dist.eps가 생성된다. eps파일은 [ghostview](http://pages.cs.wisc.edu/~ghost/)등을 이용하여 볼 수 있다.
 
-<img src="./graph_tput_dist.png" width="300" height="300">
+<center><img src="./graph_tput_dist.eps width="400" height="300"></center>
 
+---
 
+### Task 3. MCS 레벨 변경
 
+위의 실험에서는 ```dataMode``` 파라미터를 ```OfdmRate54Mbps```로 설정하여 사용하였다. 이는 54Mbps의 전송속도를 내는 MCS 레벨을 사용하겠다는
+뜻이다. 802.11a에는 총 7개의 MCS 레벨이 정의되어있는데, 54Mbps는 가장 높은 MCS 7에 해당하는 것이다. 높은 MCS 레벨을 사용할 수록 수신기가 패킷을
+복원하기 위해 필요한 SNR이 높아지며, 따라서 MCS 레벨에 따라 전송거리 (transmission range)도 달라지게 된다.
 
+** RunSimulation 함수에 두번째 인자로 ```mcs```를 추가한다.*** 이 값은 사용하고자 하는 MCS 레벨을 의미한다.
 
+함수 내에서 ```mcs``` 값에 따라 ```dataMode```를 설정해주는 부분을 다음과 같이 만들어주면 된다.
 
+```cpp
+std::string dataMode;
+if(mcs==0) dataMode = std::string("OfdmRate6Mbps");
+if(mcs==1) dataMode = std::string("OfdmRate9Mbps");
+if(mcs==2) dataMode = std::string("OfdmRate12Mbps");
+if(mcs==3) dataMode = std::string("OfdmRate18Mbps");
+if(mcs==4) dataMode = std::string("OfdmRate24Mbps");
+if(mcs==5) dataMode = std::string("OfdmRate36Mbps");
+if(mcs==6) dataMode = std::string("OfdmRate48Mbps");
+if(mcs==7) dataMode = std::string("OfdmRate54Mbps");
+```
 
+main 함수에서 사용자가 MCS 레벨을 커맨드라인에 입력할 수 있도록 인자로 등록해준다.
 
+```cpp
+uint16_t mcs = 7;
 
+CommandLine cmd;
+cmd.AddValue("mcs", "MCS index", mcs);
+cmd.Parse(argc, argv);
+```
 
+이렇게 변경한 스크립트 (script01-03.cc)를 실행하되, MCS레벨을 0-7로 바꿔가면서 결과가 어떻게 달라지는지 확인한다. 
 
+---
 
+### Do It Yourself: MCS레벨에 따른 전송량과 전송거리
 
+지금까지 배운 것을 토대로 MCS레벨에 따른 전송량과 전송거리를 그래프로 그려본다. 위에서 그린 그래프와 X축, Y축은 같고,
+라인은 MCS 0, 3, 5, 7의 네 라인이 표시되도록 한다.
 
+한 그래프 안에 여러 개의 라인을 그리는 Gnuplot 스크립트는 [이것](draw_multiline.scr)을 참고하면 된다.
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+---
 
 
 
