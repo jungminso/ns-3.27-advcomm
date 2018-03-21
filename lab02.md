@@ -259,6 +259,101 @@ cmd.Parse(argc, argv);
 이렇게 실행하면 이전과 같이 29.3576Mbps의 전송량이 나온다. 하지만 distance를 40으로 바꾸면, 결과가 0Mbps로
 나오는데, 이는 두 노드 사이의 거리가 너무 멀어서 서로의 패킷을 복원할 수 없기 때문이다. 
 
+---
+
+### Task 2. Batch 실험
+
+노드 사이의 거리와 전송량간의 상관관계를 알고 싶다고 하자. 이를 위하여서는 두 노드 간의 거리를 바꿔가면서 실험을 여러 번 해야 한다.
+실험을 할때마다 일일히 손으로 distance를 변경하고 실험을 돌리고 결과를 적어놓고 하는 것은 번거로운 일이므로, 한꺼번에 파라미터를
+바꿔가면서 실험을 하는 batch 실험이 필요하다. Batch 실험을 하는 방법은 여러 가지가 있다. 실험코드를 하나의 함수로 만들어
+main 함수에서 여러번 그 함수를 호출하도록 할 수도 있고, 외부에서 bash shell script 등을 이용하여 실험을 여러번 수행하도록
+할 수도 있다. 이 외에도 여러 가지 방식이 있고, 이들은 모두 장단점이 있기 때문에 어떤 방식을 사용하는 것이 가장 좋다고 말할 수는 없다.
+여기서는 간단하게 실험 코드를 함수로 만들어 여러번 호출하는 방식을 사용한다.
+
+main 함수는 아래와 같이 구성한다.
+
+```cpp
+int main(int argc, char *argv[]) {
+
+    CommandLine cmd;
+    cmd.Parse(argc, argv);
+
+    FILE *outfile = fopen("tput_dist.dat", "w");
+
+    for(double d=1.0; d<60.0; d=d+1.0) {
+        double tput = RunSimulation(d);
+        NS_LOG_UNCOND(d << " " << tput);
+        fprintf(outfile, " %4.1f  %8.3f\n", d, tput);
+    }
+
+    fclose(outfile);
+}
+```
+
+**기존의 main 함수는 RunSimulation이라는 이름으로 바꿔주고, 인자로 distance를 받도록 한다.**
+
+이제 스크립트를 실행시키면, 결과로 tput_dist.dat이라는 파일이 나온다. 이 파일의 각 라인에는 노드 사이의 거리와 그에 따른 전송량이 기록되어있다.
+[Gnuplot](http://www.gnuplot.info)을 이용하여 이 데이터를 그래프로 만들수가 있다. 먼저 Gnuplot용 스크립트를 아래와 같이 작성한다.
+파일이름은 draw.scr로 가정한다.
+
+```
+set terminal postscript eps
+set output "graph_tput_dist.eps"
+set key top right
+set title "Throughput vs. Distance" font "Helvetica, 20"
+set xlabel "Distance between two nodes" font "Helvetica, 18"
+set ylabel "Throughput (Mbps)" font "Helvetica, 18"
+set xrange [1:60]
+set yrange [0:30]
+set grid
+plot "tput_dist.dat" using 1:2 title "54Mbps" with linespoints pt 7 ps 1.2 lw 1.5
+```
+
+이렇게 작성한 후 아래와 같이 Gnuplot을 실행시킨다.
+
+```
+gnuplot tput_dist.dat
+```
+
+이와 같이 실행시키면 결과로 graph_tput_dist.eps가 생성된다. eps파일은 [ghostview](http://pages.cs.wisc.edu/~ghost/)등을 이용하여 볼 수 있다.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
