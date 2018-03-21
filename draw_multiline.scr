@@ -1,0 +1,13 @@
+set terminal postscript eps
+set output "graph_tput_dist_mcs.eps"
+set key bottom left
+set title "Throughput vs. Distance" font "Helvetica, 20"
+set xlabel "Distance between two nodes" font "Helvetica, 18"
+set ylabel "Throughput (Mbps)" font "Helvetica, 18"
+set xrange [0:150]
+set yrange [0:35]
+set grid
+plot "tput_dist_mcs0.dat" using 1:2 title "6Mbps" with linespoints pt 6 ps 1.0 lw 1.5, \
+     "tput_dist_mcs3.dat" using 1:2 title "18Mbps" with linespoints pt 8 ps 1.0 lw 1.5, \
+     "tput_dist_mcs5.dat" using 1:2 title "36Mbps" with linespoints pt 12 ps 1.0 lw 1.5, \
+     "tput_dist_mcs7.dat" using 1:2 title "54Mbps" with linespoints pt 5 ps 1.0 lw 1.5
