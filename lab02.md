@@ -312,7 +312,7 @@ plot "tput_dist.dat" using 1:2 title "54Mbps" with linespoints pt 7 ps 1.2 lw 1.
 이렇게 작성한 후 아래와 같이 Gnuplot을 실행시킨다.
 
 ```
-gnuplot tput_dist.dat
+gnuplot draw.scr
 ```
 
 이와 같이 실행시키면 결과로 graph_tput_dist.eps가 생성된다. eps파일은 [ghostview](http://pages.cs.wisc.edu/~ghost/)등을 이용하여 볼 수 있다.
