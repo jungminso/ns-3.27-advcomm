@@ -102,26 +102,25 @@ WifiNetDevice::Send (Ptr<Packet> packet, const Address& dest, uint16_t protocolN
 }
 ```
 
+이 라인을 실행한 결과는 아래와 같다.
 
+```
+WifiNetDevice:Send(0x15eb5d0, 0x15f7620, 06-06-ff:ff:ff:ff:ff:ff, 2054)
+```
 
+NS_LOG_FUNCTION 함수를 쓰면 일단 출력할 로그메시지의 앞부분에 컴포넌트이름:현재함수이름이 붙는다. 그 뒤에는 인자로 넣은
+변수의 값들이 들어가는데 여기서는 다음과 같다.
 
+```
+this: 0x15eb5d0
+packet: 0x15f7620
+dest: 06-06-ff:ff:ff:ff:ff:ff
+protocolNumber: 2054
+```
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+this와 packet은 특정 인스턴스의 주소 값이라는 것을 알 수 있다. dest는 목적지의 MAC address인데, 이 내용을 보면
+브로드캐스트인것을 알 수 있고, protocolNumber가 [2054](https://www.iana.org/assignments/ieee-802-numbers/ieee-802-numbers.xhtml)
+인데 이는 현재 전송하려는 메시지가 [ARP](https://ko.wikipedia.org/wiki/%EC%A3%BC%EC%86%8C_%EA%B2%B0%EC%A0%95_%ED%94%84%EB%A1%9C%ED%86%A0%EC%BD%9C)
+메시지임을 알 수 있다. 이와 같이 로그메시지를 이용해 현재 시뮬레이터 내에서 어떤 일이 벌어지고 있는지 확인이 가능하다.
 
 
