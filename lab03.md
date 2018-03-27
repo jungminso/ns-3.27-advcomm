@@ -123,4 +123,47 @@ this와 packet은 특정 인스턴스의 주소 값이라는 것을 알 수 있�
 인데 이는 현재 전송하려는 메시지가 [ARP](https://ko.wikipedia.org/wiki/%EC%A3%BC%EC%86%8C_%EA%B2%B0%EC%A0%95_%ED%94%84%EB%A1%9C%ED%86%A0%EC%BD%9C)
 메시지임을 알 수 있다. 이와 같이 로그메시지를 이용해 현재 시뮬레이터 내에서 어떤 일이 벌어지고 있는지 확인이 가능하다.
 
+---
+
+#### 03.03. 패킷 전송과정 이해
+
+script03.cc를 실행시켜서 출력된 로그메시지를 보면 여러가지 정보를 얻을 수가 있다.
+
+```
+WifiNetDevice:WifiNetDevice()
+WifiNetDevice:WifiNetDevice()
+WifiNetDevice:NotifyNewAggregate(0x15e5610)
+WifiNetDevice:NotifyNewAggregate(0x15eb5d0)
+WifiNetDevice:Send(0x15eb5d0, 0x15f7620, 06-06-ff:ff:ff:ff:ff:ff, 2054)
+WifiNetDevice:ForwardUp(0x15e5610, 0x15a8840, 00:00:00:00:00:02, ff:ff:ff:ff:ff:ff)
+WifiNetDevice:Send(0x15e5610, 0x15f8ce0, 00-06-00:00:00:00:00:02, 2054)
+WifiNetDevice:ForwardUp(0x15eb5d0, 0x15d77a0, 00:00:00:00:00:01, 00:00:00:00:00:02)
+WifiNetDevice:Send(0x15eb5d0, 0x15e5810, 00-06-00:00:00:00:00:01, 2048)
+WifiNetDevice:ForwardUp(0x15e5610, 0x15e4550, 00:00:00:00:00:02, 00:00:00:00:00:01)
+WifiNetDevice:DoDispose()
+WifiNetDevice:DoDispose()
+throughput: 0.011776Mbps
+WifiNetDevice:~WifiNetDevice()
+WifiNetDevice:~WifiNetDevice()
+```
+
+먼저, 맨 처음에 WifiNetDevice의 인스턴스가 두 개 생성되고, 맨 마지막에 두 개가 소멸되는 것을 알 수 있다. 노드의 개수가 2개이고,
+각 노드마다 하나의 무선네트워크 인터페이스를 가지고 있기 때문이다.
+
+다음으로 NotifyNewAggregate이라는 함수가 나오는데 이는 지금 이름만 봐서는 잘 모르니 나중에 알아보도록 한다.
+
+다음으로는 Send - ForwardUp 이 두 함수가 쌍으로 세번이 나온다. Send 함수는 메시지를 송신할 때 호출되는 함수이고, ForwardUp은
+수신한 메시지를 상위 레이어로 올릴 때 사용하는 함수이다. 따라서 송신과 수신이 세 번 일어난 것이다. 시뮬레이션 스크립트에서는 트래픽의 간격(interval)을
+10초로 길게 잡아서 패킷이 한번만 전송되도록 하였는데, 왜 세개나 전송이 되었을까라는 의문이 든다.
+
+Send의 함수를 보면 위에서 분석한 대로 출력되는 로그메시지에 수신자의 MAC 주소와, 패킷의 protocol 넘버가 있다. 
+첫번째와 두번째 패킷은 ARP 패킷이고, 세번째는 IPv4 패킷[(2048)](https://www.iana.org/assignments/ieee-802-numbers/ieee-802-numbers.xhtml), 
+즉 데이터 패킷이라는 것을 알 수 있다. 시뮬레이션 스크립트에서 전송하도록 한 트래픽은 이 IPv4 패킷이고, 나머지는 네트워크에서 생성되는 컨트롤 메시지이다.
+
+
+
+
+
+
+
 
