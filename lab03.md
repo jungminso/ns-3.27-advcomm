@@ -198,7 +198,7 @@ MAC 주소를 가진 노드는 송신자에게 ARP Reply를 보낸다. 송신자
 script03.cc의 main 함수에 다음과 같은 라인을 넣는다.
 
 ```cpp
-	LogComponentEnable("WifiNetDevice", LogLevel(LOG_LEVEL_ALL|LOG_PREFIX_TIME));
+    LogComponentEnable("WifiNetDevice", LogLevel(LOG_LEVEL_ALL|LOG_PREFIX_TIME));
     LogComponentEnable("WifiMac", LogLevel(LOG_LEVEL_ALL|LOG_PREFIX_TIME));
     LogComponentEnable("RegularWifiMac", LogLevel(LOG_LEVEL_ALL|LOG_PREFIX_TIME));
     LogComponentEnable("AdhocWifiMac", LogLevel(LOG_LEVEL_ALL|LOG_PREFIX_TIME));
