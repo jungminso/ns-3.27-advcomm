@@ -400,52 +400,157 @@ ACK을 수신한 경우에는 DcaTxop:GotAck이 호출된다. 송신자가 수�
 DCF에서는 하나의 패킷을 송신하고 나면 반드시 random backoff를 해야 하고, backoff counter가 0이 되어야 다음 패킷을 전송할 수 있다.
 
 
+---
+
+### Task 1. DCF 코드 변경
+
+이제부터는 ns-3의 소스코드를 변경해보도록 하겠다. 일단은 매우 간단하게 random backoff 부분을 변경하면서 성능에 어떤 변화가 일어나는지 살펴본다.
+위에서 설명했듯이, 노드가 패킷을 하나 전송하고 난 다음에는, 반드시 random backoff를 통해 어느 정도 시간이 흐른 다음 다시 패킷을 전송할 수 있다.
+이렇게 하는 이유는 여러 노드가 있을 때 하나의 노드가 채널을 점유하는 현상을 막기 위해서이다.
+
+ns-3 코드에서는 노드가 패킷을 전송하고 수신자로부터 ACK을 받냐 못받냐에 따라 GotAck 또는 MissedAck 함수가 호출된다. (브로드캐스트 패킷의 경우에는
+ACK이 없기 때문에 이 경우에는 다른 함수에 의해 처리된다.) 예를 들어 GotAck 함수는 다음과 같은 내용으로 되어있다.
+
+```cpp
+void
+DcaTxop::GotAck (void)
+{
+  NS_LOG_FUNCTION (this);
+  if (!NeedFragmentation ()
+      || IsLastFragment ())
+    {
+      NS_LOG_DEBUG ("got ack. tx done.");
+      if (!m_txOkCallback.IsNull ())
+        {
+          m_txOkCallback (m_currentHdr);
+        }
+
+      /* we are not fragmenting or we are done fragmenting
+       * so we can get rid of that packet now.
+       */
+      m_currentPacket = 0;
+      m_dcf->ResetCw ();
+      m_dcf->StartBackoffNow (m_rng->GetInteger (0, m_dcf->GetCw ()));
+      RestartAccessIfNeeded ();
+    }
+  else
+    {
+      NS_LOG_DEBUG ("got ack. tx not done, size=" << m_currentPacket->GetSize ());
+    }
+}
+```
+
+여기서 주목할 부분은 다음 두 라인이다.
+
+```cpp
+      m_dcf->ResetCw ();
+      m_dcf->StartBackoffNow (m_rng->GetInteger (0, m_dcf->GetCw ()));
+```
+
+먼저 첫번째 라인에서는 contention window를 초기값으로 리셋한다. Contention window는 초기값에서 출발하여, 노드가 패킷 전송에 실패할때마다
+두 배씩 증가하다가, 패킷 전송에 성공하게 되면 바로 초기상태로 돌아오게 된다. 
+
+두번째 라인에서는 contention window에서 랜덤 넘버를 선택하여 backoff를 시작한다. DcfManager의 함수 StartBackoffNow를 호출할 때
+사용되는 인자가 backoff counter가 된다.
+
+원래 backoff를 하는 이유는, 여러 노드가 서로 채널을 얻기 위해 경쟁을 할 때 이들이 전송하는 시간을 다르게 하기 위함이다. 하지만 전송하는 노드가
+하나밖에 없는 경우에는 backoff가 필요하지 않다. 따라서 이 부분을 다음과 같이 고쳐보도록 한다.
+
+```cpp
+      m_dcf->ResetCw ();
+      m_dcf->StartBackoffNow (1);
+```
+
+이렇게 하면 랜덤넘버를 뽑는 대신 항상 backoff counter가 1에서 출발하게 된다. 이제 시뮬레이션 스크립트를 실행할 건데, 로그 부분을 없애고
+트래픽의 interval은 다시 0.0001로 변경해준다. 그리고 시뮬레이션을 실행하여 전송량을 확인한다. 이러한 전송량이 나오는 이유는 무엇일까?
 
 
+---
 
+### Task 2. 내부 모듈의 파라미터 변경
 
+이번에는 Task 1과 같이 코드에 직접 값을 넣는 방법 대신, 시뮬레이션 스크립트에서 contention window의 범위를 지정해 줄 수 있도록 코드를 작성해본다.
+일단 contention window와 관련된 파라미터를 찾는다. dcf-state.h 파일에 보면, 다음의 세가지 파라미터가 정의되어 있는 것을 알 수 있다.
 
+```cpp
+  uint32_t m_cwMin;       //!< the CW minimum
+  uint32_t m_cwMax;       //!< the CW maximum
+  uint32_t m_cw;          //!< the current CW
+```
 
+이 변수들의 의미는 주석을 보고 짐작할 수 있을 것이다. 일단 이 실습에서는 m_cwMin을 시뮬레이션 스크립트에서 바꿔보고자 한다.
 
+이를 위하여는 먼저 컴포넌트들이 어떻게 연결되었는지를 알아야 한다. 일단 시뮬레이션 스크립트에서는 WifiNetDevice 클래스를 직접 접근할 수 있다.
+script03.cc 안에 보면 MAC과 PHY 등을 연결하여 네트워크 디바이스를 만드는 부분이 있을 것이다.
 
+```
+    NetDeviceContainer devices = wifi.Install(phy, mac, wifiNodes);
+```
 
+devices를 이용하여 다음과 같이 각 노드의 네트워크 디바이스를 접근할 수 있다.
 
+```
+    Ptr<WifiNetDevice> device = DynamicCast<WifiNetDevice>(devices.Get(0));
+```
 
+이렇게 하면 0번 노드의 네트워크 디바이스를 가져올수 있다. 여기서 DynamicCast가 쓰이는데, Ptr이 포인터라면 DynamicCast는
+동적캐스팅이라고 보면 된다. devices.Get 함수의 리턴타입은 Ptr<NetDevice>인데, 이것은 WifiNetDevice의 상위 클래스이다.
+우리가 device를 WifiNetDevice의 포인터로 선언하였으므로, 리턴된 값을 WifiNetDevice의 포인터로 동적캐스팅해준다.
 
+이제 WifiNetDevice 클래스와 DcfState가 어떻게 연결되어있는지를 알면 m_cwMin에도 접근할 수가 있다.
 
+먼저 wifi-net-device.h를 보면 멤버변수에
 
+```cpp
+Ptr<WifiMac> m_mac;
+```
 
+이라고 선언되어있는 것을 찾을 수 있다. Ptr<WifiMac>은 WifiMac 타입의 포인터를 의미하는 것으로써, WifiMac*과 같이 취급하면 된다.
+일반적으로 클래스의 멤버변수가 있으면, 그 멤버변수를 접근하기 위한 함수가 있는데, m_mac에 대해서는 다음과 같은 함수가 있는 것을 확인할 수 있다.
 
+```cpp
+Ptr<WifiMac> GetMac (void) const;
+```
 
+이 함수를 이용하여 m_mac을 접근할 수 있다. 그런데 우리가 사용하고자 하는 MAC의 클래스는 RegularWifiMac이고, 여기에서 리턴되는 클래스는
+WifiMac이므로 또한번 DynamicCasting을 해주어야 한다.
 
+```cpp
+    Ptr<WifiNetDevice> device = DynamicCast<WifiNetDevice>(devices.Get(0));
+	Ptr<RegularWifiMac> mac = DynamicCast<RegularWifiMac>(device->GetMac());
+```
 
+이제 regular-wifi-mac.h를 보면 다음과 같이 멤버변수에 대한 선언과 그 멤버변수에 대한 Get 함수가 있다.
 
+```cpp
+    Ptr<DcaTxop> m_dca;
+    Ptr<DcaTxop> GetDcaTxop (void) const;
+```
 
+그런데 여기서 한가지, GetDcaTxop 함수가 protected로 선언이 되어있다. 우리는 외부에서 GetDcaTxop 함수를 접근할 것이므로,
+이 함수를 public 부분으로 옮겨준다.
 
+이제 DcaTxop 클래스도 접근이 가능해졌다.
 
+```cpp
+    Ptr<WifiNetDevice> device = DynamicCast<WifiNetDevice>(devices.Get(0));
+	Ptr<RegularWifiMac> mac = DynamicCast<RegularWifiMac>(device->GetMac());
+	Ptr<DcaTxop> dca = mac->GetDcaTxop();
+```
+	
+이제 dca-txop.h 안에 정의되어있는 함수들을 사용해서 원하는 목적을 이룰 수 있다. 이 때, 모든 노드에 대해서 MinCw 값을 바꿔주기 위해서는
+for loop을 이용해 각각의 노드에 대해 처리해준다.
 
+```cpp
+    for(uint16_t i=0; i<2; i++) {
+        Ptr<WifiNetDevice> device = DynamicCast<WifiNetDevice>(devices.Get(i));
+        Ptr<RegularWifiMac> mac = DynamicCast<RegularWifiMac>(device->GetMac());
+        Ptr<DcaTxop> dca = mac->GetDcaTxop();
+        dca->SetMinCw(2);
+    }
+```	
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+이제 시뮬레이션을 수행하여 결과를 확인한다. 또한, SetMinCw의 인자를 바꿔보면서 성능이 어떻게 달라지는지도 확인한다.
 
 
 
