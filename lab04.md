@@ -8,4 +8,4 @@
 #### 04.01. 시뮬레이션 환경 구성
 
 
-<center><img src="./graph_tput_dist.png" width="400" height="300"></center>
+<center><img src="./simenv.png" width="400" height="400"></center>
