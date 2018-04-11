@@ -8,7 +8,7 @@
 (1) ns-3를 웹으로부터 다운로드받는다.
 
 ```
-wget http://nsnam.org/release/ns-allinone-3.27.tar.bz2
+wget http://www.nsnam.org/release/ns-allinone-3.27.tar.bz2
 ```
 
 (2) 압축을 푼다.
