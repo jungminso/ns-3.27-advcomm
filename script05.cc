@@ -207,8 +207,8 @@ int main(int argc, char *argv[]) {
     MobilityHelper mobility;
     Ptr<ListPositionAllocator> apPositionAlloc = CreateObject<ListPositionAllocator>();
     for(uint16_t i=0; i<num_rooms_rows*num_rooms_cols; i++) {
-        double x = double(i%num_rooms_rows*grid_length+grid_length/2);
-        double y = double(i/num_rooms_rows*grid_length+grid_length/2);
+        double x = double(i%num_rooms_cols*grid_length+grid_length/2);
+        double y = double(i/num_rooms_cols*grid_length+grid_length/2);
         apPositionAlloc->Add(Vector(x, y, 0.0));
         //NS_LOG_UNCOND("ap position: " << x << " " << y);
     }
