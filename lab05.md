@@ -335,44 +335,85 @@ src/wifi/model 디렉토리에 있는 wifi-phy.h를 보면 다음과 같이 변�
 
 (2) Energy Detection Threshold
 
+Energy Detection Threshold는 어떤 노드가 지금 현재 들어오는 신호를 유효한 신호로 판단하기 위한 신호세기 임계값이다. 예를 들어 이 임계값이 -96dBm이면,
+어떤 신호가 감지될 때 -96dBm 이상인 경우에만 preamble을 수신하여 처리하고, 그렇지 않으면 무시한다. 이 임계값을 높이게 될 경우에는 약한 신호에 대해 무시하게 된다.
+따라서 만약 나에게 송신하는 노드가 정해져있고, 신호세기가 어느 정도 클 경우에는 이 임계값을 높이게 되면 불필요하게 다른 노드로 전송되는 신호를 overhearing 하지 않는
+효과가 있다.
 
+Energy Detection Threshold를 나타내는 변수 또한 WifiPhy 클래스에 소속되어 있으며, 다음과 같이 wifi-phy.h에 정의되어있다.
+
+```cpp
+  /**
+   * Sets the energy detection threshold (dBm).
+   * The energy of a received signal should be higher than
+   * this threshold (dbm) to allow the PHY layer to detect the signal.
+   *
+   * \param threshold the energy detction threshold in dBm
+   */
+  void SetEdThreshold (double threshold);
+  /**
+   * Return the energy detection threshold (dBm).
+   *
+   * \return the energy detection threshold in dBm
+   */
+  double GetEdThreshold (void) const;
+```
+
+```cpp
+  double   m_edThresholdW;          //!< Energy detection threshold in watts
+```
+
+따라서 위의 전송파워를 변경하는 방법을 이용하여 노드별로 임계값을 다르게 설정해 줄 수 있다.
 
 
 (3) Carrier Sense Threshold
 
+Carrier Sense Threshold는 어떤 노드가 채널을 idle로 판단할지 busy로 판단할지를 결정하는 임계값이다. 이 임계값은 위의 energy detection threshold와는
+좀 다른데, energy detection threshold 이상의 신호가 들어올 경우 이 신호를 수신하기 위한 처리과정을 밟지만, carrier sense threshold는 단순히 channel을
+busy 상태로 판단하는 것이다. 신호를 수신하면서 channel을 idle 상태로 판단하는 것은 의미가 없으므로 energy detection threshold가 carrier sense threshold
+보다는 높게 설정하는 것이 맞다.
 
+Carrier sense threshold를 높이게 되면, 높은 세기의 신호에 대해서도 channel을 idle 상태로 판단하기 때문에 노드가 전송을 적극적으로 하게 된다. 반대로 carrier
+sense threshold를 낮추게 되면 낮은 세기의 신호에 대해서도 channel을 busy 상태로 판단하므로 노드가 매우 보수적으로 전송을 하게 된다. 
+
+이 임계값도 energy detection threshold와 마찬가지로 WifiPhy 소속의 변수로 정의되어있다.
+
+```cpp
+  /**
+   * Sets the CCA threshold (dBm). The energy of a received signal
+   * should be higher than this threshold to allow the PHY
+   * layer to declare CCA BUSY state.
+   *
+   * \param threshold the CCA threshold in dBm
+   */
+  void SetCcaMode1Threshold (double threshold);
+  /**
+   * Return the CCA threshold (dBm).
+   *
+   * \return the CCA threshold in dBm
+   */
+  double GetCcaMode1Threshold (void) const;
+```
+
+```cpp
+  double   m_ccaMode1ThresholdW;  //!< Clear channel assessment (CCA) threshold in watts
+```
+
+변수를 사용할 때 현재의 값이 dBm 단위인지 W 단위인지를 주의하여 사용하도록 한다.
 
 
 (4) Contention Window Size
 
+Contention window size의 변경 방법은 [Lab 3](lab03.md)에서 다루었다. 이 값을 높이게 되면 충돌 가능성이 낮아지지만
+평균적인 backoff 시간이 늘어나고, 이 값을 낮추게 되면 backoff 시간이 낮아지지만 충돌 가능성이 높아진다. 어떤 노드와 패킷 충돌을
+일으킬 노드가 얼마나 되느냐에 따라서 적당한 값을 assign하는 것이 필요하다.
 
+---
 
+### Do It Yourself. 사전 실험 및 아이디어 도출
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+주어진 시뮬레이션 환경을 바꾸지 않고, 파라미터를 변경하면서 전송량이나 공평도를 높일 수 있는지를 확인해본다.
+전송량이 높아지는 결과를 얻었을 경우에는 왜 그렇게 되었는지를 분석해보고, 어떤 근거를 가지고 파라미터를 설정해야 할지를 생각해본다.
+설계하는 알고리즘은 다양한 시뮬레이션 환경과 노드의 위치에서도 적용될 수 있는 것이어야 한다.
 
 
