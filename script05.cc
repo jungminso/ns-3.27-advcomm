@@ -134,7 +134,7 @@ int main(int argc, char *argv[]) {
     num_rooms_rows = 3;
     num_rooms_cols = 3;
     num_aps = num_rooms_rows*num_rooms_cols;
-    num_stas       = 10;
+    num_stas       = 9;
     grid_length    = 20;
 
     begin_time     = 1000.0;
@@ -193,6 +193,13 @@ int main(int argc, char *argv[]) {
 	// Create network device and install PHY and MAC
     apDevices = wifi.Install(phy, mac, apNodes);
     staDevices = wifi.Install(phy, mac, staNodes);
+
+    // temp
+    Ptr<WifiNetDevice> temp_dev = DynamicCast<WifiNetDevice>(staDevices.Get(0));
+    Ptr<WifiPhy> temp_phy = temp_dev->GetPhy();
+    temp_phy->SetTxPowerStart(10.0);
+    temp_phy->SetTxPowerEnd(10.0); 
+ 
 
 	// Set node positions and mobility pattern
     MobilityHelper mobility;
@@ -296,6 +303,15 @@ int main(int argc, char *argv[]) {
     
 	// Run simulation
 	Simulator::Stop(Seconds(begin_time+sim_time+0.1));
+
+    fprintf(stderr, "-------------------------------------\n");
+    fprintf(stderr, " number of rooms: %ux%u       \n", num_rooms_rows, num_rooms_cols);
+    fprintf(stderr, " number of stations: %u       \n", num_stas);
+    fprintf(stderr, " room size: %.1fx%.1f (m^2)   \n", grid_length, grid_length);
+    fprintf(stderr, " seed: %u                     \n", seed);
+    fprintf(stderr, "-------------------------------------\n");
+
+
 
     NS_LOG_UNCOND("Starting Simulation...");
 	Simulator::Run();
