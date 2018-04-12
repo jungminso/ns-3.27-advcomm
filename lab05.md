@@ -88,3 +88,291 @@ PDF로 바꾸는 부분까지를 한꺼번에 실행하기 위해서는 다음�
 그리고 이것을 PDF로 바꾸면 다음과 같은 그림을 얻을 수 있다.
 
 <center><img src="./topology.png" width="400" height="400"></center>
+
+그림에서 파란색은 AP이고 검은색은 station이다. 노드 옆에 붙어있는 번호는 노드의 IP 주소 맨
+뒷부분이라고 보면 된다.
+
+(2) 노드 별 전송량 출력
+
+지난 실습까지는 UDP 서버별 전송량과 전체 전송량을 출력하였는데, fairness를 계산하기 위해서는
+각 노드별로 얼마의 데이터를 전송했는지를 확인해야 한다. 이를 위하여 ns-3에서 제공하는 flow monitor
+를 활용하여 노드별 전송량을 측정한다. 시뮬레이션 스크립트에서 이를 수행하는 코드 부분은 다음과 같다.
+
+```cpp
+    // Install flow monitor
+    FlowMonitorHelper flowmon;
+    Ptr<FlowMonitor> monitor = flowmon.InstallAll();
+```
+
+먼저 ```Simulation::Run```을 호출하기 전에, 위와 같이 flow monitor를 install 해 주어야 한다.
+그리고 시뮬레이션을 수행한 후에, flow monitor에 저장된 stat 값들을 읽어온다.
+
+```cpp
+    Ptr<Ipv4FlowClassifier> classifier = DynamicCast<Ipv4FlowClassifier>(flowmon.GetClassifier());
+    std::map<FlowId, FlowMonitor::FlowStats> stats = monitor->GetFlowStats();
+    fprintf(stderr, "-------------------------------------------------------------------------\n");
+    fprintf(stderr, "| ID |   src addr      |   dst addr      |    tx    |    rx    |  tput  |\n");
+    fprintf(stderr, "-------------------------------------------------------------------------\n");
+    int c = 0;
+    for(std::map<FlowId, FlowMonitor::FlowStats>::const_iterator i=stats.begin(); i!=stats.end(); ++i) {
+        Ipv4FlowClassifier::FiveTuple t = classifier->FindFlow(i->first);
+        if(i->second.txPackets < 100) continue;
+        c++;
+        std::ostringstream oss;
+        oss << t.sourceAddress;
+        std::string sstr = oss.str();
+        oss.str(std::string());
+        oss << t.destinationAddress;
+        std::string dstr = oss.str();
+        double tput = i->second.rxBytes * 8.0 / sim_time / 1024.0 / 1024.0;
+
+        total_rx_packets += i->second.rxPackets;
+        total_rx_packets_sq += i->second.rxPackets * i->second.rxPackets;
+
+        fprintf(stderr, "| %2d | %-15s | %-15s | %8lu | %8lu | %6.2f |\n", c, sstr.c_str(), dstr.c_str(), i->second.txBytes, i->second.rxBytes, tput);
+    }
+    fprintf(stderr, "-------------------------------------------------------------------------\n");
+```
+
+Flow monitor에는 각각의 트래픽 플로우에 대하여 source IP address, destination IP address, tx bytes, rx bytes, tx packets, rx packets 등의
+통계값이 저장된다. 이 부분을 이용하여 전송량을 측정할 수 있다. 이 코드에서
+
+```cpp
+if(i->second.txPackets < 100) continue;
+```
+
+부분을 넣은 이유는, ARP activation을 위해 생성한 트래픽을 통계에서 제외시키기 위함이다.
+이 코드가 수행되면 시뮬레이션의 결과로 다음과 같은 표가 나온다.
+
+```
+-------------------------------------------------------------------------
+| ID |   src addr      |   dst addr      |    tx    |    rx    |  tput  |
+-------------------------------------------------------------------------
+|  1 | 192.168.1.10    | 192.168.1.1     |  7500000 |   895500 |   6.83 |
+|  2 | 192.168.1.11    | 192.168.1.2     |  7494000 |   232500 |   1.77 |
+|  3 | 192.168.1.12    | 192.168.1.3     |  7486500 |   483000 |   3.68 |
+|  4 | 192.168.1.13    | 192.168.1.4     |  7477500 |   237000 |   1.81 |
+|  5 | 192.168.1.14    | 192.168.1.5     |  7470000 |   313500 |   2.39 |
+|  6 | 192.168.1.15    | 192.168.1.6     |  7464000 |   931500 |   7.11 |
+|  7 | 192.168.1.16    | 192.168.1.7     |  7456500 |   414000 |   3.16 |
+|  8 | 192.168.1.17    | 192.168.1.8     |  7449000 |   403500 |   3.08 |
+|  9 | 192.168.1.18    | 192.168.1.9     |  7440000 |   394500 |   3.01 |
+-------------------------------------------------------------------------
+```
+
+(3) fairness 측정한다
+
+네트워크 상의 유저들이 공평하게 서비스를 받는지 측정하기 위하여 Jain's fairness index를 계산한다.
+계산하는 방법은 [여기](https://en.wikipedia.org/wiki/Fairness_measure)를 참조하면 된다.
+스크립트 상에서 fairness를 계산하고 출력하는 부분은 다음과 같다.
+
+```cpp
+    uint32_t total_rx_packets = 0;
+    uint32_t total_rx_packets_sq = 0;
+```
+
+먼저 변수를 준비하고, flow monitor로부터 통계값을 읽을 때 이 변수들에 값을 더해준다.
+
+```cpp
+    Ptr<Ipv4FlowClassifier> classifier = DynamicCast<Ipv4FlowClassifier>(flowmon.GetClassifier());
+    std::map<FlowId, FlowMonitor::FlowStats> stats = monitor->GetFlowStats();
+    for(std::map<FlowId, FlowMonitor::FlowStats>::const_iterator i=stats.begin(); i!=stats.end(); ++i) {
+        Ipv4FlowClassifier::FiveTuple t = classifier->FindFlow(i->first);
+        total_rx_packets += i->second.rxPackets;
+        total_rx_packets_sq += i->second.rxPackets * i->second.rxPackets;
+    }
+```
+
+마지막으로, fairness index를 계산하여 출력한다.
+
+```cpp
+    // Fairness calculation ------------------------------------------------------
+    double fairness = pow((double)total_rx_packets, 2) / (num_stas * (double)total_rx_packets_sq);
+    NS_LOG_UNCOND("Jain's fairness index: " << fairness);
+```
+
+Jain's fairness index는 0과 1사이의 값이며, 1에 가까울 수록 공평한 것이다. 모든 노드가 같은 전송량을 가질 경우 fairness index가 1이 된다.
+
+
+(4) Station의 위치를 방별로 고르게 분배
+
+지난 실습에서, AP는 각 방의 중앙에 위치하며 station은 전체 시뮬레이션 구역에 랜덤하게 뿌려지는 방식으로 하였다. 하지만 이렇게 하게 되면 한 방에 많은
+노드가 몰리고 다른 방에는 비어있는 경우가 발생할 수 있고, 이것이 시뮬레이션 결과에 큰 영향을 미친다. 그래서 이번 스크립트에서는, 노드들이 1번방부터 차례로
+하나씩 들어가도록 변경하였으며, 방 안에서는 랜덤한 위치를 갖도록 하였다. 코드는 아래와 같다.
+
+```cpp
+    Ptr<ListPositionAllocator> staPositionAlloc = CreateObject<ListPositionAllocator>();
+    for(uint16_t i=0; i<num_stas; i++) {
+        uint16_t room = i % num_aps;
+        double x = m_random->GetValue()*grid_length+(room%num_rooms_cols)*grid_length;
+        double y = m_random->GetValue()*grid_length+(room/num_rooms_cols)*grid_length;
+        staPositionAlloc->Add(Vector(x, y, 0.0));
+        //NS_LOG_UNCOND("sta position: " << x << " " << y);
+    }
+    mobility.SetPositionAllocator(staPositionAlloc);
+    mobility.SetMobilityModel("ns3::ConstantPositionMobilityModel");
+    mobility.Install(staNodes);
+```
+
+---
+
+
+#### 05.02. 파라미터 변경 방법
+
+다음과 같이 실행해본다.
+
+```
+./waf --run "scratch/script05 --latex=1"
+```
+
+그러면 topology.pdf가 생성되고, 화면에 결과는 다음과 같이 출력될 것이다.
+
+```
+Starting Simulation...
+...........
+-------------------------------------------------------------------------
+| ID |   src addr      |   dst addr      |    tx    |    rx    |  tput  |
+-------------------------------------------------------------------------
+|  1 | 192.168.1.10    | 192.168.1.1     |  7500000 |   895500 |   6.83 |
+|  2 | 192.168.1.11    | 192.168.1.2     |  7494000 |   232500 |   1.77 |
+|  3 | 192.168.1.12    | 192.168.1.3     |  7486500 |   483000 |   3.68 |
+|  4 | 192.168.1.13    | 192.168.1.4     |  7477500 |   237000 |   1.81 |
+|  5 | 192.168.1.14    | 192.168.1.5     |  7470000 |   313500 |   2.39 |
+|  6 | 192.168.1.15    | 192.168.1.6     |  7464000 |   931500 |   7.11 |
+|  7 | 192.168.1.16    | 192.168.1.7     |  7456500 |   414000 |   3.16 |
+|  8 | 192.168.1.17    | 192.168.1.8     |  7449000 |   403500 |   3.08 |
+|  9 | 192.168.1.18    | 192.168.1.9     |  7440000 |   394500 |   3.01 |
+-------------------------------------------------------------------------
+total throughput: 30.7942Mbps
+Jain's fairness index: 0.79163
+```
+
+총 전송량이 약 30Mbps이고, 공평도 약 0.8인 것을 알 수 있다. 이제 고민해볼 것은, 
+이 동일한 시뮬레이션 환경에서, 총 전송량이나 공평도를 높일 수 있는가이다. 총 전송량 30Mbps는
+두 노드만 있는 실험에서의 전송량과 유사한데, 이것이 의미하는 것은 거의 한번에 한 노드밖에 전송하지 못했다는
+것이다. 만약 여러 개의 노드가 동시에 성공적을 전송할 수 있다면, 전송량은 높아질 것이다.
+
+전송량이나 공평도를 높이기 위한 방법은 파라미터를 조절하는 것부터 매체접근제어 방식 자체를 바꾸는 것까지
+다양하게 있을 수 있다. 여기서는 조절할 수 있는 파라미터와 파라미터를 변경하는 방법에 대해 알아본다.
+
+(1) Tx Power
+
+시뮬레이션 스크립트에서 노드의 전송파워에 대한 부분 PHY를 설정할 때 나온다.
+
+```cpp
+    phy.Set("TxPowerStart", DoubleValue(20.0));
+    phy.Set("TxPowerEnd", DoubleValue(20.0));
+```
+
+TxPowerStart와 TxPowerEnd가 있는데, 이 값을 다르게 해주는 경우는 automatic power control을 사용하기 위함이다.
+이 두 값을 같게 설정해주면 그것이 노드의 전송 파워가 된다. 노드의 전송파워를 줄이면, 전송을 했을 때 수신자에서의 신호 세기가 줄어든다.
+하지만 이와 함께 다른 노드에 미치는 간섭도 줄어들게 된다. 만약 노드와 수신자 간의 거리가 매우 가까워서 전송파워를 줄여도 수신자에서의
+SNR에 문제가 없다면, 전송파워를 줄임으로써 간섭을 줄이는 것이 전체 시스템 성능에 도움이 될 수 있다.
+
+위의 코드를 이용하면 모든 노드에 대해 한꺼번에 값을 설정해 주는 것이기 때문에, 노드별로 전송파워를 다르게 설정할 수가 없다.
+노드별로 다르게 설정하기 위해서는 다음과 같이 하면 된다.
+
+먼저 해당 변수가 어디 소속인지를 확인한다. 일단 phy.Set과 같이 되어 있으므로 PHY와 관련된 컴포넌트임을 알 수 있다.
+src/wifi/model 디렉토리에 있는 wifi-phy.h를 보면 다음과 같이 변수와 접근함수들이 정의되어있다.
+
+```cpp
+  /**
+   * Sets the minimum available transmission power level (dBm).
+   *
+   * \param start the minimum transmission power level (dBm)
+   */
+  void SetTxPowerStart (double start);
+  /**
+   * Return the minimum available transmission power level (dBm).
+   *
+   * \return the minimum available transmission power level (dBm)
+   */
+  double GetTxPowerStart (void) const;
+  /**
+   * Sets the maximum available transmission power level (dBm).
+   *
+   * \param end the maximum transmission power level (dBm)
+   */
+  void SetTxPowerEnd (double end);
+  /**
+   * Return the maximum available transmission power level (dBm).
+   *
+   * \return the maximum available transmission power level (dBm)
+   */
+  double GetTxPowerEnd (void) const;
+```
+
+```cpp
+  double   m_txPowerBaseDbm;      //!< Minimum transmission power (dBm)
+  double   m_txPowerEndDbm;       //!< Maximum transmission power (dBm)
+```
+
+즉, 전송파워에 관한 변수는 WifiPhy 클래스의 멤버 변수이다. WifiPhy는 WifiNetDevice 컴포넌트로부터
+접근할 수 있다. wifi-net-device.h에 보면 아래와 같이 정의되어있다.
+
+```cpp
+  /**
+   * \returns the phy we are currently using.
+   */
+  Ptr<WifiPhy> GetPhy (void) const;
+```
+
+```cpp
+  Ptr<WifiPhy> m_phy; //!< the phy
+```
+
+그렇다면, 시뮬레이션 스크립트에서 다음과 같이 노드의 전송파워를 변경하면 된다. 예를 들어 "0번" 노드의 전송파워를 변경하고 싶다면,
+
+```cpp
+    Ptr<WifiNetDevice> temp_dev = DynamicCast<WifiNetDevice>(staDevices.Get(0));
+    Ptr<WifiPhy> temp_phy = temp_dev->GetPhy();
+    temp_phy->SetTxPowerStart(10.0);
+    temp_phy->SetTxPowerEnd(10.0);
+```
+
+여기서 주의할 것은, "0번" 노드는 staDevices에 등록된 첫번째 노드라는 뜻이고, 실제로 이 노드의 IP address는 192.168.1.10이라는 것이다.
+
+
+(2) Energy Detection Threshold
+
+
+
+
+(3) Carrier Sense Threshold
+
+
+
+
+(4) Contention Window Size
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
