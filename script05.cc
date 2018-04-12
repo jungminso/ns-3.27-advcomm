@@ -133,7 +133,7 @@ int main(int argc, char *argv[]) {
 
     num_rooms_rows = 3;
     num_rooms_cols = 3;
-    num_aps = num_rooms_rows*num_rooms_cols;
+    
     num_stas       = 9;
     grid_length    = 20;
 
@@ -156,6 +156,8 @@ int main(int argc, char *argv[]) {
     cmd.AddValue("seed", "Random seed", seed);
     cmd.AddValue("latex", "Output topology to a tex file", latex_out);
     cmd.Parse(argc, argv);
+	
+    num_aps = num_rooms_rows*num_rooms_cols;
 
     // Set random seed
     m_random->SetStream(seed);
