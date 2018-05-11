@@ -4,5 +4,5 @@
 [Lab-02. 첫번째 시뮬레이션 스크립트](lab02.md)    
 [Lab-03. ns-3의 무선랜 모듈 이해](lab03.md)  
 [Lab-04. 대규모 시뮬레이션](lab04.md)  
-[Lab-05. 아이디어 도출](lab05.md)
+[Lab-05. 아이디어 도출](lab05.md)  
 [Term Project](lab06.md)
